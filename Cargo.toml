@@ -1,0 +1,23 @@
+[package]
+name = "flatsnap"
+version = "0.1.0"
+edition = "2021"
+license-file = "LICENSE.md"
+publish = false
+
+[dependencies]
+anyhow = "1.0.75"
+bytemuck = "1.13.1"
+clap = { version = "4.3.23", features = ["derive"] }
+env_logger = "0.10.0"
+flatbuffers = "23.5.26"
+im = "15.1.0"
+itertools = "0.11.0"
+log = "0.4.20"
+solana-runtime = { git = "https://github.com/brooksprumo/solana.git", rev = "66fff69703" }
+solana-sdk = { git = "https://github.com/brooksprumo/solana.git", rev = "66fff69703" }
+tempfile = "3.8.0"
+thiserror = "1.0.47"
+
+[build-dependencies]
+flatc-rust = "0.2.0"

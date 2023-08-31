@@ -1,0 +1,241 @@
+/// The schema for snapshots
+/// Based on v1.16.7: https://github.com/solana-labs/solana/commit/1a6d77a1a5f43159f0f6686c76535a7b9761bde7
+namespace Solana.Snapshot;
+
+struct Hash {
+  bytes: [uint8: 32];
+}
+
+struct Pubkey {
+  bytes: [uint8: 32];
+}
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/sdk/src/account.rs#L24-L41
+table Account {
+  lamports: uint64;
+  data: [uint8];
+  owner: Pubkey;
+  executable: bool;
+  rent_epoch: uint64;
+}
+
+table AncestorsEntry {
+  slot: uint64;
+}
+
+table HardForksEntry {
+  slot: uint64;
+  count: uint64;
+}
+
+table FeeCalculator {
+  lamports_per_signature: uint64;
+}
+
+table FeeRateGovernor {
+  lamports_per_signature: uint64;
+  target_lamports_per_signature: uint64;
+  target_signatures_per_slot: uint64;
+  min_lamports_per_signature: uint64;
+  max_lamports_per_signature: uint64;
+  burn_percent: uint8;
+}
+
+table RentCollector {
+  epoch: uint64;
+  epoch_schedule: EpochSchedule;
+  slots_per_year: float64;
+  rent: Rent;
+}
+
+table EpochSchedule {
+  slots_per_epoch: uint64;
+  leader_schedule_slot_offset: uint64;
+  warmup: bool;
+  first_normal_epoch: uint64;
+  first_normal_slot: uint64;
+}
+
+table Rent {
+  lamports_per_byte_year: uint64;
+  exemption_threshold: float64;
+  burn_percent: uint8;
+}
+
+table Inflation {
+  initial: float64;
+  terminal: float64;
+  taper: float64;
+  foundation: float64;
+  foundation_term: float64;
+}
+
+table IncrementalSnapshotPersistence {
+  full_slot: uint64;
+  full_hash: Hash;
+  full_capitalization: uint64;
+  incremental_hash: Hash;
+  incremental_capitalization: uint64;
+}
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/blockhash_queue.rs#L28
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/blockhash_queue.rs#L12-L16
+table BlockhashAgesEntry {
+  hash_index: uint64;
+  hash: Hash;
+  timestamp: uint64;
+  fee_calculator: FeeCalculator;
+}
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/blockhash_queue.rs#L18-L32
+table BlockhashQueue {
+  last_hash_index: uint64;
+  last_hash: Hash;// TODO: originally this was an Option; put it back?
+  max_age: uint64;
+  ages: [BlockhashAgesEntry];
+}
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/vote_account.rs#L38
+table VoteAccountsEntry {
+  pubkey: Pubkey;
+  stake: uint64;
+  account: Account;
+}
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/sdk/program/src/stake/state.rs#L301-L312
+table StakeDelegationsEntry {
+  stake_pubkey: Pubkey;
+  voter_pubkey: Pubkey;
+  stake: uint64;
+  activation_epoch: uint64;
+  deactivation_epoch: uint64;
+  warmup_cooldown_rate: float64;
+}
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/sdk/program/src/stake_history.rs#L57-L59
+table StakeHistoryEntry {
+  epoch: uint64;
+  effective: uint64;
+  activating: uint64;
+  deactivating: uint64;
+}
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/stakes.rs#L150-L173
+table Stakes {
+  epoch: uint64;
+  vote_accounts: [VoteAccountsEntry];
+  stake_delegations: [StakeDelegationsEntry];
+  stake_history: [StakeHistoryEntry];
+}
+
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/epoch_stakes.rs#L8
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/epoch_stakes.rs#L12-L15
+table NodeIdToVoteAccountsEntry {
+  node_id: Pubkey;
+  vote_accounts: [Pubkey];
+  total_stake: uint64;
+}
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/epoch_stakes.rs#L9
+table EpochAuthorizedVotersEntry {
+  vote_account: Pubkey;
+  authorized_voter: Pubkey;
+}
+
+
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/epoch_stakes.rs#L18-L24
+table EpochStakesEntry {
+  epoch: uint64 (key);
+  total_stake: uint64;
+  stakes: Stakes;
+  node_id_to_vote_accounts: [NodeIdToVoteAccountsEntry];
+  epoch_authorized_voters: [EpochAuthorizedVotersEntry];
+}
+
+enum RewardKind: uint8 {
+  Fee,
+  Rent,
+  Staking,
+  Voting,
+}
+
+table RewardInfo {
+  reward_kind: RewardKind;
+  lamports: int64;
+  post_balance: uint64;
+  commission: uint8; // TODO: originally this was an Option; put it back?
+}
+
+table StakeRewardsEntry {
+  stake_pubkey: Pubkey;
+  stake_account: Account;
+  stake_reward_info: RewardInfo;
+}
+
+table EpochRewards {
+  start_block_height: uint64;
+  calculated_epoch_stake_rewards: [StakeRewardsEntry];
+}
+
+table AccountStorage {
+  id: uint32;
+  slot: uint64;
+  count: uint64; // number of accounts in this storage file
+}
+
+/// The fields required to rebuild a Bank
+/// https://github.com/solana-labs/solana/blob/1a6d77a1a5f43159f0f6686c76535a7b9761bde7/runtime/src/bank.rs#L654-L693
+table Bank {
+  epoch: uint64;
+  block_height: uint64;
+  slot: uint64;
+  hash: Hash;
+  epoch_accounts_hash: Hash; // TODO: Should this be wrapped in an Option? Or make it its own type?
+  parent_slot: uint64;
+  parent_hash: Hash;
+  transaction_count: uint64;
+  tick_height: uint64;
+  max_tick_height: uint64;
+  hashes_per_tick: uint64 = null; // TODO: convert to union with Sleep + Spin?
+  ticks_per_slot: uint64;
+  ns_per_slot: uint64; // NOTE: originally was a u128
+  slots_per_year: float64;
+  signature_count: uint64;
+  capitalization: uint64;
+  collector_id: Pubkey;
+  collector_fees: uint64;
+  collected_rent: uint64;
+  accounts_data_size: uint64;
+  is_delta: bool;
+  ancestors: [AncestorsEntry];
+  hard_forks: [HardForksEntry];
+  genesis_creation_time: int64; // TODO: should this be unsigned instead?
+  //fee_calculator: FeeCalculator (deprecated); // TODO: confirm this is unused
+  fee_rate_governor: FeeRateGovernor;
+  rent_collector: RentCollector;
+  epoch_schedule: EpochSchedule; // TODO: Is this a duplicate of what's in RentCollector?
+  inflation: Inflation;
+  incremental_snapshot_persistence: IncrementalSnapshotPersistence; // TODO: Should this be wrapped in an Option?
+  blockhash_queue: BlockhashQueue;
+  stakes: Stakes;
+  epoch_stakes: [EpochStakesEntry];
+  epoch_rewards: EpochRewards; // NOTE: Originally was an enum to be active vs inactive, changed to using present or not
+}
+
+table Snapshot {
+  bank: Bank;
+  accounts_delta_hash: Hash; // TODO: move into Bank? remove entirely?
+  accounts_hash: Hash;
+  account_storages: [AccountStorage];
+
+  // status cache
+  // epoch accounts hash
+  // accounts db
+  //    - accounts storage files
+  //    - accounts hash
+  //    - accounts delta hash (is this actually needed...?)
+  //    - bank stats??? (is this actually needed...?)
+}
+
+root_type Snapshot;
